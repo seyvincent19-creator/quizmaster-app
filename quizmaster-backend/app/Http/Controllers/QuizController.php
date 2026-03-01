@@ -1,0 +1,194 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Exports\AttemptReportExport;
+use App\Http\Requests\Quiz\AnswerRequest;
+use App\Http\Resources\QuizAttemptResource;
+use App\Models\QuizAttempt;
+use App\Services\QuizService;
+use App\Services\ReportService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+
+class QuizController extends Controller
+{
+    public function __construct(
+        protected QuizService $quizService,
+        protected ReportService $reportService
+    ) {}
+
+    public function start(Request $request): JsonResponse
+    {
+        $request->validate([
+            'subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
+        ]);
+
+        $actor = $this->getActor();
+        $attempt = $this->quizService->startQuiz(
+            $actor,
+            $request->input('subject_id'),
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        return response()->json($this->formatAttemptForQuiz($attempt));
+    }
+
+    public function resume(Request $request, string $attemptCode): JsonResponse
+    {
+        $actor = $this->getActor();
+        $attempt = $this->quizService->getAttempt($actor, $attemptCode);
+
+        return response()->json($this->formatAttemptForQuiz($attempt));
+    }
+
+    public function answer(AnswerRequest $request, string $attemptCode): JsonResponse
+    {
+        $actor = $this->getActor();
+        $attempt = $this->quizService->getAttempt($actor, $attemptCode);
+
+        if ($attempt->status === 'completed') {
+            return response()->json(['message' => 'This quiz is already completed.'], 422);
+        }
+
+        $answer = $this->quizService->saveAnswer(
+            $attempt,
+            $request->question_id,
+            $request->selected_choice,
+            $request->time_taken_seconds,
+            $request->boolean('is_locked', false)
+        );
+
+        return response()->json([
+            'question_id' => $answer->question_id,
+            'selected_choice' => $answer->selected_choice,
+            'is_locked' => $answer->is_locked,
+            'current_index' => $attempt->fresh()->current_index,
+        ]);
+    }
+
+    public function finish(Request $request, string $attemptCode): JsonResponse
+    {
+        $actor = $this->getActor();
+        $attempt = $this->quizService->getAttempt($actor, $attemptCode);
+        $attempt = $this->quizService->finishQuiz($attempt);
+
+        return response()->json([
+            'message' => 'Quiz completed successfully.',
+            'attempt_code' => $attempt->attempt_code,
+            'score' => $attempt->score,
+            'total_questions' => $attempt->total_questions,
+        ]);
+    }
+
+    public function result(Request $request, string $attemptCode): JsonResponse
+    {
+        $actor = $this->getActor();
+        $attempt = $this->quizService->getAttempt($actor, $attemptCode);
+
+        if ($attempt->status !== 'completed') {
+            return response()->json(['message' => 'Quiz is not yet completed.'], 422);
+        }
+
+        $result = $this->quizService->getResult($attempt);
+        return response()->json($result);
+    }
+
+    public function history(Request $request): JsonResponse
+    {
+        $actor = $this->getActor();
+        $history = $this->quizService->getHistory($actor);
+
+        return response()->json([
+            'data' => QuizAttemptResource::collection($history->items()),
+            'meta' => [
+                'current_page' => $history->currentPage(),
+                'last_page' => $history->lastPage(),
+                'total' => $history->total(),
+                'per_page' => $history->perPage(),
+            ],
+        ]);
+    }
+
+    public function downloadPdf(Request $request, string $attemptCode)
+    {
+        $actor = $this->getActor();
+        $fkField = $actor instanceof \App\Models\Admin ? 'admin_id' : 'user_id';
+        $attempt = QuizAttempt::where($fkField, $actor->id)
+            ->where('attempt_code', $attemptCode)
+            ->where('status', 'completed')
+            ->firstOrFail();
+
+        $data = $this->reportService->getAttemptReportData($attempt);
+
+        $pdf = Pdf::loadView('pdf.attempt_report', $data);
+        $pdf->setPaper('A4', 'landscape');
+
+        return $pdf->download("quiz-report-{$attemptCode}.pdf");
+    }
+
+    public function downloadExcel(Request $request, string $attemptCode): BinaryFileResponse
+    {
+        $actor = $this->getActor();
+        $fkField = $actor instanceof \App\Models\Admin ? 'admin_id' : 'user_id';
+        $attempt = QuizAttempt::where($fkField, $actor->id)
+            ->where('attempt_code', $attemptCode)
+            ->where('status', 'completed')
+            ->firstOrFail();
+
+        return Excel::download(
+            new AttemptReportExport($attempt),
+            "quiz-report-{$attemptCode}.xlsx"
+        );
+    }
+
+    private function getActor()
+    {
+        // auth('admin') is set by AdminAuthenticate middleware when admin token is used.
+        // auth('sanctum') is set by auth:sanctum middleware when user token is used.
+        // Since Sanctum is polymorphic, auth('sanctum')->user() can also return Admin
+        // if the admin token is used on a sanctum-guarded route.
+        return auth('admin')->user() ?? auth('sanctum')->user();
+    }
+
+    private function formatAttemptForQuiz($attempt): array
+    {
+        $answersMap = $attempt->answers->keyBy('question_id');
+
+        // Questions WITHOUT correct_choice to prevent cheating
+        $questions = $attempt->answers->map(fn($a) => [
+            'id' => $a->question->id,
+            'question_text' => $a->question->question_text,
+            'choice_a' => $a->question->choice_a,
+            'choice_b' => $a->question->choice_b,
+            'choice_c' => $a->question->choice_c,
+            'choice_d' => $a->question->choice_d,
+            'difficulty' => $a->question->difficulty,
+            'category' => $a->question->category,
+        ])->values();
+
+        // Current answer states
+        $answers = $attempt->answers->map(fn($a) => [
+            'question_id' => $a->question_id,
+            'selected_choice' => $a->selected_choice,
+            'is_locked' => $a->is_locked,
+            'time_taken_seconds' => $a->time_taken_seconds,
+        ])->keyBy('question_id');
+
+        return [
+            'attempt_code' => $attempt->attempt_code,
+            'status' => $attempt->status,
+            'current_index' => $attempt->current_index,
+            'total_questions' => $attempt->total_questions,
+            'subject_id' => $attempt->subject_id,
+            'subject_name' => $attempt->subject?->name,
+            'started_at' => $attempt->started_at?->toISOString(),
+            'questions' => $questions,
+            'answers' => $answers,
+        ];
+    }
+}
