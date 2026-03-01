@@ -173,7 +173,7 @@ export default function Reports() {
         {/* Tabs */}
         <div className="border-b">
           <div className="flex gap-4">
-            {['summary', 'attempts', 'analysis'].map(t => (
+            {['summary', 'students', 'attempts', 'analysis'].map(t => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -191,6 +191,54 @@ export default function Reports() {
           <div className="flex justify-center py-12"><Spinner size="lg" /></div>
         ) : (
           <>
+            {/* Students Report Table */}
+            {tab === 'students' && (
+              <div className="card">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">#</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Student</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Class</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Generation</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Subject</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Score</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Result</th>
+                        <th className="text-left py-3 px-4 font-semibold text-gray-600">Started At</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attempts.length === 0 ? (
+                        <tr><td colSpan={8} className="py-10 text-center text-gray-400">No data found</td></tr>
+                      ) : attempts.map((a, i) => (
+                        <tr key={a.id} className="border-b border-gray-100 hover:bg-gray-50">
+                          <td className="py-3 px-4 text-gray-400">{((page - 1) * 20) + i + 1}</td>
+                          <td className="py-3 px-4">
+                            <p className="font-medium text-gray-800">{a.user?.name}</p>
+                            <p className="text-xs text-gray-400">{a.user?.email}</p>
+                          </td>
+                          <td className="py-3 px-4 text-gray-600">{a.user?.class_name || <span className="text-gray-300">—</span>}</td>
+                          <td className="py-3 px-4 text-gray-600">{a.user?.generation || <span className="text-gray-300">—</span>}</td>
+                          <td className="py-3 px-4 text-gray-600">{a.subject_name}</td>
+                          <td className="py-3 px-4 font-semibold text-gray-800">{a.score}/{a.total_questions}</td>
+                          <td className="py-3 px-4">
+                            <span className={a.score >= 50 ? 'badge badge-green' : 'badge badge-red'}>
+                              {a.score >= 50 ? 'PASS' : 'FAIL'}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+                            {a.started_at ? new Date(a.started_at).toLocaleString() : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <Pagination meta={attemptsMeta} onPageChange={setPage} />
+              </div>
+            )}
+
             {/* Attempts Table */}
             {tab === 'attempts' && (
               <div className="card">

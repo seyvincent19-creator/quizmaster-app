@@ -32,7 +32,14 @@ class ReportController extends Controller
             'data' => $attempts->map(fn($a) => [
                 'id' => $a->id,
                 'attempt_code' => $a->attempt_code,
-                'user' => ['id' => $a->user->id, 'name' => $a->user->name, 'email' => $a->user->email],
+                'user' => [
+                    'id' => $a->user->id,
+                    'name' => $a->user->name,
+                    'email' => $a->user->email,
+                    'class_name' => $a->user->class_name,
+                    'generation' => $a->user->generation,
+                ],
+                'subject_name' => $a->subject?->name ?? 'All Subjects',
                 'score' => $a->score,
                 'total_questions' => $a->total_questions,
                 'status' => $a->status,

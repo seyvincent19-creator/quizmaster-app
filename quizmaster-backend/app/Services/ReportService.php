@@ -73,9 +73,9 @@ class ReportService
 
     public function getAttempts(array $filters)
     {
-        $query = QuizAttempt::with('user')
+        $query = QuizAttempt::with(['user', 'subject'])
             ->where('quiz_attempts.status', 'completed')
-            ->orderBy('quiz_attempts.finished_at', 'desc');
+            ->orderBy('quiz_attempts.started_at', 'desc');
 
         if (!empty($filters['class_name']) || !empty($filters['generation'])) {
             $query->join('users', 'quiz_attempts.user_id', '=', 'users.id');
