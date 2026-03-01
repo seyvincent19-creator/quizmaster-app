@@ -24,6 +24,9 @@ class AdminAuthenticate
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
+        // Set the current access token so currentAccessToken() works (needed for logout)
+        $accessToken->tokenable->withAccessToken($accessToken);
+
         // Set the authenticated admin on auth('admin') guard
         auth('admin')->setUser($accessToken->tokenable);
 

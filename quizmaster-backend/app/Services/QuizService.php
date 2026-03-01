@@ -14,7 +14,7 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class QuizService
 {
-    public function startQuiz(User|Admin $actor, ?int $subjectId, string $ipAddress = null, string $userAgent = null): QuizAttempt
+    public function startQuiz(User|Admin $actor, ?int $subjectId, ?string $ipAddress = null, ?string $userAgent = null): QuizAttempt
     {
         $isAdmin = $actor instanceof Admin;
         $fkField = $isAdmin ? 'admin_id' : 'user_id';
