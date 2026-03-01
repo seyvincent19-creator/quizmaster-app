@@ -1,6 +1,22 @@
 import { create } from 'zustand';
 import { quizApi } from '../lib/api';
 
+// Backend stores original choice letter; convert to displayed position so
+// highlight logic (selectedChoice === 'A'/'B'/'C'/'D') stays consistent.
+const toDisplayedChoices = (answers) => {
+  const letters = ['A', 'B', 'C', 'D'];
+  const result = {};
+  for (const [qId, ans] of Object.entries(answers || {})) {
+    if (ans.selected_choice && ans.choice_order) {
+      const idx = ans.choice_order.indexOf(ans.selected_choice);
+      result[qId] = { ...ans, selected_choice: idx >= 0 ? letters[idx] : null };
+    } else {
+      result[qId] = ans;
+    }
+  }
+  return result;
+};
+
 export const useQuizStore = create((set, get) => ({
   attempt: null,
   questions: [],
@@ -27,7 +43,7 @@ export const useQuizStore = create((set, get) => ({
           started_at: data.started_at,
         },
         questions: data.questions,
-        answers: data.answers || {},
+        answers: toDisplayedChoices(data.answers),
         currentIndex: data.current_index || 0,
         loading: false,
         timeLeft: 60,
@@ -55,7 +71,7 @@ export const useQuizStore = create((set, get) => ({
           started_at: data.started_at,
         },
         questions: data.questions,
-        answers: data.answers || {},
+        answers: toDisplayedChoices(data.answers),
         currentIndex: data.current_index || 0,
         loading: false,
         timeLeft: 60,

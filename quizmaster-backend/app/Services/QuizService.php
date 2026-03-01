@@ -43,7 +43,7 @@ class QuizService
 
         return DB::transaction(function () use ($actor, $fkField, $subjectId, $ipAddress, $userAgent) {
             $questions = $subjectId !== null
-                ? Question::active()->where('subject_id', $subjectId)->get()
+                ? Question::active()->where('subject_id', $subjectId)->inRandomOrder()->get()
                 : Question::active()->inRandomOrder()->limit(100)->get();
 
             $attempt = QuizAttempt::create([
@@ -58,13 +58,19 @@ class QuizService
                 'user_agent' => $userAgent,
             ]);
 
-            $answers = $questions->map(fn($q) => [
-                'quiz_attempt_id' => $attempt->id,
-                'question_id' => $q->id,
-                'is_locked' => false,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ])->toArray();
+            $choices = ['A', 'B', 'C', 'D'];
+            $answers = $questions->map(function ($q) use ($attempt, $choices) {
+                $order = $choices;
+                shuffle($order);
+                return [
+                    'quiz_attempt_id' => $attempt->id,
+                    'question_id' => $q->id,
+                    'choice_order' => json_encode($order),
+                    'is_locked' => false,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            })->toArray();
 
             QuizAnswer::insert($answers);
 
@@ -94,6 +100,12 @@ class QuizService
 
         if ($attempt->status === 'completed') {
             throw new HttpException(422, 'This quiz attempt is already completed.');
+        }
+
+        // Convert displayed choice position to the original choice letter
+        if ($selectedChoice !== null && $answer->choice_order) {
+            $posMap = ['A' => 0, 'B' => 1, 'C' => 2, 'D' => 3];
+            $selectedChoice = $answer->choice_order[$posMap[$selectedChoice]];
         }
 
         $isCorrect = null;

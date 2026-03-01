@@ -213,24 +213,30 @@ class QuizController extends Controller
     {
         $answersMap = $attempt->answers->keyBy('question_id');
 
-        // Questions WITHOUT correct_choice to prevent cheating
-        $questions = $attempt->answers->map(fn($a) => [
-            'id' => $a->question->id,
-            'question_text' => $a->question->question_text,
-            'choice_a' => $a->question->choice_a,
-            'choice_b' => $a->question->choice_b,
-            'choice_c' => $a->question->choice_c,
-            'choice_d' => $a->question->choice_d,
-            'difficulty' => $a->question->difficulty,
-            'category' => $a->question->category,
-        ])->values();
+        // Questions WITHOUT correct_choice to prevent cheating; choices shuffled per-user
+        $questions = $attempt->answers->map(function ($a) {
+            $q = $a->question;
+            $origChoices = ['A' => $q->choice_a, 'B' => $q->choice_b, 'C' => $q->choice_c, 'D' => $q->choice_d];
+            $order = $a->choice_order ?? ['A', 'B', 'C', 'D'];
+            return [
+                'id' => $q->id,
+                'question_text' => $q->question_text,
+                'choice_a' => $origChoices[$order[0]],
+                'choice_b' => $origChoices[$order[1]],
+                'choice_c' => $origChoices[$order[2]],
+                'choice_d' => $origChoices[$order[3]],
+                'difficulty' => $q->difficulty,
+                'category' => $q->category,
+            ];
+        })->values();
 
-        // Current answer states
+        // Current answer states — include choice_order so frontend can map selected original choice to displayed position
         $answers = $attempt->answers->map(fn($a) => [
             'question_id' => $a->question_id,
             'selected_choice' => $a->selected_choice,
             'is_locked' => $a->is_locked,
             'time_taken_seconds' => $a->time_taken_seconds,
+            'choice_order' => $a->choice_order ?? ['A', 'B', 'C', 'D'],
         ])->keyBy('question_id');
 
         return [

@@ -12,6 +12,7 @@ class QuizAnswer extends Model
     protected $fillable = [
         'quiz_attempt_id',
         'question_id',
+        'choice_order',
         'selected_choice',
         'is_correct',
         'answered_at',
@@ -22,6 +23,7 @@ class QuizAnswer extends Model
     protected function casts(): array
     {
         return [
+            'choice_order' => 'array',
             'is_correct' => 'boolean',
             'is_locked' => 'boolean',
             'answered_at' => 'datetime',
