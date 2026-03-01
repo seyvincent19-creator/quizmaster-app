@@ -15,6 +15,7 @@ class ImportQuestionsRequest extends FormRequest
     {
         return [
             'questions' => ['required', 'array', 'min:1'],
+            'questions.*.subject_id' => ['nullable', 'integer', 'exists:subjects,id'],
             'questions.*.question_text' => ['required', 'string'],
             'questions.*.choice_a' => ['required', 'string'],
             'questions.*.choice_b' => ['required', 'string'],
