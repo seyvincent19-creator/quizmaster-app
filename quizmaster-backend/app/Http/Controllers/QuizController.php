@@ -114,6 +114,60 @@ class QuizController extends Controller
         ]);
     }
 
+    public function stats(Request $request): JsonResponse
+    {
+        $actor = $this->getActor();
+        $fkField = $actor instanceof \App\Models\Admin ? 'admin_id' : 'user_id';
+
+        $attempts = QuizAttempt::where($fkField, $actor->id)
+            ->where('status', 'completed')
+            ->with(['subject', 'answers'])
+            ->orderBy('finished_at', 'desc')
+            ->get();
+
+        $total = $attempts->count();
+        $passed = $attempts->filter(fn($a) => $a->score >= 50)->count();
+
+        $bySubject = $attempts
+            ->groupBy(fn($a) => $a->subject?->name ?? 'All Subjects')
+            ->map(fn($group, $name) => [
+                'subject' => $name,
+                'attempts' => $group->count(),
+                'avg_score' => round($group->avg('score'), 1),
+                'best_score' => $group->max('score'),
+                'pass_rate' => round($group->filter(fn($a) => $a->score >= 50)->count() / $group->count() * 100),
+            ])
+            ->values();
+
+        $recentScores = $attempts->take(10)->map(fn($a) => [
+            'attempt_code' => $a->attempt_code,
+            'score' => $a->score,
+            'subject' => $a->subject?->name ?? 'All Subjects',
+            'date' => $a->finished_at?->format('M d'),
+        ])->values()->reverse()->values();
+
+        $totalCorrect = 0;
+        $totalAnswered = 0;
+        foreach ($attempts as $a) {
+            $locked = $a->answers->where('is_locked', true);
+            $totalCorrect += $locked->where('is_correct', true)->count();
+            $totalAnswered += $locked->count();
+        }
+
+        return response()->json([
+            'total_attempts' => $total,
+            'passed' => $passed,
+            'failed' => $total - $passed,
+            'pass_rate' => $total > 0 ? round($passed / $total * 100) : 0,
+            'avg_score' => $total > 0 ? round($attempts->avg('score'), 1) : 0,
+            'best_score' => $total > 0 ? $attempts->max('score') : 0,
+            'total_correct' => $totalCorrect,
+            'total_answered' => $totalAnswered,
+            'by_subject' => $bySubject,
+            'recent_scores' => $recentScores,
+        ]);
+    }
+
     public function downloadPdf(Request $request, string $attemptCode)
     {
         $actor = $this->getActor();

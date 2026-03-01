@@ -57,6 +57,7 @@ export const quizApi = {
   finish: (attemptCode) => api.post(`/quiz/${attemptCode}/finish`),
   result: (attemptCode) => api.get(`/quiz/${attemptCode}/result`),
   history: (page = 1) => api.get('/quiz/history', { params: { page } }),
+  stats: () => api.get('/quiz/stats'),
   downloadPdf: (attemptCode) => api.get(`/quiz/${attemptCode}/report/pdf`, { responseType: 'blob' }),
   downloadExcel: (attemptCode) => api.get(`/quiz/${attemptCode}/report/excel`, { responseType: 'blob' }),
 };

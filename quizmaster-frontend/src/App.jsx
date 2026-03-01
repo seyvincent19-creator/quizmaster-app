@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Quiz from './pages/Quiz';
 import Result from './pages/Result';
 import Profile from './pages/Profile';
+import MyReport from './pages/MyReport';
 
 // Admin pages
 import AdminLogin from './pages/admin/Login';
@@ -48,6 +49,7 @@ export default function App() {
         <Route path="/quiz/:attemptCode" element={<UserOrAdminProtectedRoute><Quiz /></UserOrAdminProtectedRoute>} />
         <Route path="/result/:attemptCode" element={<UserOrAdminProtectedRoute><Result /></UserOrAdminProtectedRoute>} />
         <Route path="/profile" element={<UserProtectedRoute><Profile /></UserProtectedRoute>} />
+        <Route path="/my-report" element={<UserProtectedRoute><MyReport /></UserProtectedRoute>} />
 
         {/* Admin routes */}
         <Route path="/admin/dashboard" element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />

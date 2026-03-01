@@ -36,6 +36,7 @@ Route::prefix('auth')->group(function () {
 Route::prefix('quiz')->middleware('auth.quiz')->group(function () {
     Route::post('start', [QuizController::class, 'start']);
     Route::get('history', [QuizController::class, 'history']);
+    Route::get('stats', [QuizController::class, 'stats']);
     Route::get('{attemptCode}', [QuizController::class, 'resume']);
     Route::post('{attemptCode}/answer', [QuizController::class, 'answer']);
     Route::post('{attemptCode}/finish', [QuizController::class, 'finish']);

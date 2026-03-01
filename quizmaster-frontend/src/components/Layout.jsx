@@ -15,6 +15,7 @@ export default function Layout({ children }) {
 
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard' },
+    { to: '/my-report', label: 'My Report' },
     { to: '/profile', label: 'Profile' },
   ];
 

@@ -89,7 +89,6 @@ export const useQuizStore = create((set, get) => ({
             is_locked: isLocked,
           },
         },
-        currentIndex: res.data.current_index ?? state.currentIndex,
       }));
 
       return { success: true };
