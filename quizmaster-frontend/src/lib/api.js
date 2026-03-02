@@ -75,6 +75,7 @@ export const adminQuestionsApi = {
   create: (data) => api.post('/admin/questions', data),
   update: (id, data) => api.put(`/admin/questions/${id}`, data),
   delete: (id) => api.delete(`/admin/questions/${id}`),
+  deleteAll: (params) => api.delete('/admin/questions', { params }),
   importJson: (data) => api.post('/admin/questions/import-json', data),
 };
 

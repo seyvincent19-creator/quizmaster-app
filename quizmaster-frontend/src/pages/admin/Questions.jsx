@@ -32,6 +32,8 @@ export default function Questions() {
   const [importLoading, setImportLoading] = useState(false);
 
   const [deleteId, setDeleteId] = useState(null);
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -94,6 +96,21 @@ export default function Questions() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    setDeleteAllLoading(true);
+    try {
+      const params = filters.subject_id ? { subject_id: filters.subject_id } : {};
+      const res = await adminQuestionsApi.deleteAll(params);
+      toast.success(res.data.message);
+      setShowDeleteAll(false);
+      load();
+    } catch {
+      toast.error('Failed to delete questions');
+    } finally {
+      setDeleteAllLoading(false);
+    }
+  };
+
   const handleImport = async () => {
     setImportLoading(true);
     try {
@@ -126,6 +143,9 @@ export default function Questions() {
             {meta && <p className="text-gray-500 text-sm mt-1">{meta.total} total · {meta.active_count} active</p>}
           </div>
           <div className="flex gap-3">
+            <button onClick={() => setShowDeleteAll(true)} className="btn-danger gap-2">
+              🗑 Delete All
+            </button>
             <button onClick={() => setShowImport(true)} className="btn-secondary gap-2">
               📤 Import JSON
             </button>
@@ -317,6 +337,31 @@ export default function Questions() {
         }
       >
         <p className="text-gray-600">This will permanently delete the question. This action cannot be undone.</p>
+      </Modal>
+
+      {/* Delete All Confirm */}
+      <Modal
+        isOpen={showDeleteAll}
+        onClose={() => setShowDeleteAll(false)}
+        title="Delete All Questions?"
+        footer={
+          <>
+            <button onClick={() => setShowDeleteAll(false)} className="btn-secondary">Cancel</button>
+            <button onClick={handleDeleteAll} disabled={deleteAllLoading} className="btn-danger">
+              {deleteAllLoading ? <Spinner size="sm" /> : 'Delete All'}
+            </button>
+          </>
+        }
+      >
+        {filters.subject_id ? (
+          <p className="text-gray-600">
+            This will permanently delete <strong>all questions for the selected subject</strong>. This action cannot be undone.
+          </p>
+        ) : (
+          <p className="text-gray-600">
+            This will permanently delete <strong>ALL questions in the entire question bank</strong>. This action cannot be undone.
+          </p>
+        )}
       </Modal>
     </AdminLayout>
   );

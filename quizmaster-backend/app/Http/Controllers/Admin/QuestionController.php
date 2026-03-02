@@ -72,6 +72,20 @@ class QuestionController extends Controller
         return response()->json(['message' => 'Question deleted successfully.']);
     }
 
+    public function destroyAll(Request $request): JsonResponse
+    {
+        $query = Question::query();
+
+        if ($request->filled('subject_id')) {
+            $query->where('subject_id', $request->subject_id);
+        }
+
+        $count = $query->count();
+        $query->delete();
+
+        return response()->json(['message' => "{$count} questions deleted successfully.", 'count' => $count]);
+    }
+
     public function importJson(ImportQuestionsRequest $request): JsonResponse
     {
         $questions = collect($request->questions)->map(fn($q) => array_merge($q, [
