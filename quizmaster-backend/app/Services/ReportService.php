@@ -73,7 +73,11 @@ class ReportService
 
     public function getAttempts(array $filters)
     {
+        $perPage = (int) ($filters['per_page'] ?? 20);
+        $perPage = max(1, min($perPage, 100));
+
         $query = QuizAttempt::with(['user', 'subject'])
+            ->whereHas('user')
             ->where('quiz_attempts.status', 'completed')
             ->orderBy('quiz_attempts.started_at', 'desc');
 
@@ -100,7 +104,7 @@ class ReportService
             $query->where('users.generation', $filters['generation']);
         }
 
-        return $query->select('quiz_attempts.*')->paginate(20);
+        return $query->select('quiz_attempts.*')->paginate($perPage);
     }
 
     public function getQuestionAnalysis(array $filters): array

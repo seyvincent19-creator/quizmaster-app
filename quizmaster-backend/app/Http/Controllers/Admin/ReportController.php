@@ -25,7 +25,7 @@ class ReportController extends Controller
 
     public function attempts(Request $request): JsonResponse
     {
-        $filters = $request->only(['from', 'to', 'min_score', 'max_score', 'class_name', 'generation']);
+        $filters = $request->only(['from', 'to', 'min_score', 'max_score', 'class_name', 'generation', 'per_page']);
         $attempts = $this->reportService->getAttempts($filters);
 
         return response()->json([
@@ -33,11 +33,11 @@ class ReportController extends Controller
                 'id' => $a->id,
                 'attempt_code' => $a->attempt_code,
                 'user' => [
-                    'id' => $a->user->id,
-                    'name' => $a->user->name,
-                    'email' => $a->user->email,
-                    'class_name' => $a->user->class_name,
-                    'generation' => $a->user->generation,
+                    'id' => $a->user?->id,
+                    'name' => $a->user?->name ?? 'Unknown User',
+                    'email' => $a->user?->email,
+                    'class_name' => $a->user?->class_name,
+                    'generation' => $a->user?->generation,
                 ],
                 'subject_name' => $a->subject?->name ?? 'All Subjects',
                 'score' => $a->score,

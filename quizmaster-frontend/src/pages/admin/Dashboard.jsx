@@ -15,7 +15,14 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [summary, setSummary] = useState(null);
+  const [summary, setSummary] = useState({
+    total_users: 0,
+    active_users: 0,
+    total_attempts: 0,
+    pass_rate: 0,
+    avg_score: 0,
+    pass_count: 0,
+  });
   const [attempts, setAttempts] = useState([]);
   const [questionAnalysis, setQuestionAnalysis] = useState([]);
   const [byClass, setByClass] = useState([]);
@@ -65,24 +72,54 @@ export default function AdminDashboard() {
 
   const loadData = async () => {
     setLoading(true);
-    try {
-      const [summaryRes, attemptsRes, analysisRes, byClassRes, byGenerationRes] = await Promise.all([
-        adminReportsApi.summary({}),
-        adminReportsApi.attempts({ per_page: 100 }),
-        adminReportsApi.questionAnalysis({}),
-        adminReportsApi.byClass(),
-        adminReportsApi.byGeneration(),
-      ]);
-      setSummary(summaryRes.data);
-      setAttempts(attemptsRes.data.data || []);
-      setQuestionAnalysis((analysisRes.data.data || []).slice(0, 10));
-      setByClass(byClassRes.data || []);
-      setByGeneration(byGenerationRes.data || []);
-    } catch {
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
+    const [summaryRes, attemptsRes, analysisRes, byClassRes, byGenerationRes] = await Promise.allSettled([
+      adminReportsApi.summary({}),
+      adminReportsApi.attempts({ per_page: 100 }),
+      adminReportsApi.questionAnalysis({}),
+      adminReportsApi.byClass(),
+      adminReportsApi.byGeneration(),
+    ]);
+
+    if (summaryRes.status === 'fulfilled') {
+      setSummary({
+        total_users: summaryRes.value.data?.total_users ?? 0,
+        active_users: summaryRes.value.data?.active_users ?? 0,
+        total_attempts: summaryRes.value.data?.total_attempts ?? 0,
+        pass_rate: summaryRes.value.data?.pass_rate ?? 0,
+        avg_score: summaryRes.value.data?.avg_score ?? 0,
+        pass_count: summaryRes.value.data?.pass_count ?? 0,
+      });
     }
+
+    if (attemptsRes.status === 'fulfilled') {
+      setAttempts(attemptsRes.value.data?.data || []);
+    } else {
+      setAttempts([]);
+    }
+
+    if (analysisRes.status === 'fulfilled') {
+      setQuestionAnalysis((analysisRes.value.data?.data || []).slice(0, 10));
+    } else {
+      setQuestionAnalysis([]);
+    }
+
+    if (byClassRes.status === 'fulfilled') {
+      setByClass(byClassRes.value.data || []);
+    } else {
+      setByClass([]);
+    }
+
+    if (byGenerationRes.status === 'fulfilled') {
+      setByGeneration(byGenerationRes.value.data || []);
+    } else {
+      setByGeneration([]);
+    }
+
+    if ([summaryRes, attemptsRes, analysisRes, byClassRes, byGenerationRes].some(r => r.status === 'rejected')) {
+      toast.error('Some dashboard data failed to load');
+    }
+
+    setLoading(false);
   };
 
   // Score distribution for bar chart
@@ -105,10 +142,10 @@ export default function AdminDashboard() {
     else scoreDistribution[5].count++;
   });
 
-  const passFailData = summary ? [
+  const passFailData = [
     { name: 'Pass', value: summary.pass_count },
     { name: 'Fail', value: summary.total_attempts - summary.pass_count },
-  ] : [];
+  ];
 
   return (
     <AdminLayout>
@@ -132,11 +169,11 @@ export default function AdminDashboard() {
               <KpiCard label="Total Users" value={summary?.total_users} icon="👥" color="blue" />
               <KpiCard label="Active Users" value={summary?.active_users} icon="✅" color="green" />
               <KpiCard label="Total Attempts" value={summary?.total_attempts} icon="📝" color="purple" />
-              <KpiCard label="Pass Rate" value={`${summary?.pass_rate}%`} icon="🏆" color="orange" />
+              <KpiCard label="Pass Rate" value={`${summary?.pass_rate ?? 0}%`} icon="🏆" color="orange" />
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <KpiCard label="Avg Score" value={`${summary?.avg_score}/100`} icon="📊" color="blue" />
+              <KpiCard label="Avg Score" value={`${summary?.avg_score ?? 0}/100`} icon="📊" color="blue" />
               <KpiCard label="Pass Count" value={summary?.pass_count} icon="🎯" color="green" />
               <KpiCard label="Fail Count" value={(summary?.total_attempts || 0) - (summary?.pass_count || 0)} icon="❌" color="red" />
             </div>
